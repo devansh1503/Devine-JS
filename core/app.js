@@ -1,5 +1,6 @@
 const http = require('http')
 const Response = require('./response')
+const mysql = require('mysql2')
 
 class Devine{
     constructor(port){
@@ -40,6 +41,24 @@ class Devine{
             return;
         }
         callback(req, responseObj)
+    }
+    connectDb(creds){
+        const connection = mysql.createConnection(creds)
+        connection.connect((err)=>{
+            if(err){
+                console.log("Error Connecting to MySQL:", err.message)
+                return;
+            }
+            console.log("Connection to MySQL successfull!")
+        })
+        this.connection = connection
+    }
+    async getOrCreateModel(schema){
+        const table = new ModelClass(this.connection)
+        await table.createTableIfNotExists(schema)
+        return new TableManager(schema.title, this.connection)
+    }
+    execute(query){
     }
 }
 
