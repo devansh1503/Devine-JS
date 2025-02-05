@@ -1,6 +1,8 @@
 const http = require('http')
 const Response = require('./response')
 const mysql = require('mysql2')
+const ModelClass = require('./orm/ModelClass')
+const TableManager = require('./orm/TableManager')
 
 class Devine{
     constructor(port){
@@ -42,16 +44,40 @@ class Devine{
         }
         callback(req, responseObj)
     }
-    connectDb(creds){
-        const connection = mysql.createConnection(creds)
-        connection.connect((err)=>{
-            if(err){
-                console.log("Error Connecting to MySQL:", err.message)
-                return;
-            }
-            console.log("Connection to MySQL successfull!")
+    async connectDb(creds){
+        return new Promise((resolve, reject) =>{ 
+            const connection = mysql.createConnection({
+                host: creds?.host,
+                user: creds?.user,
+                password: creds?.password
+            })
+            connection.connect((err)=>{
+                if(err){
+                    console.log("Error Connecting to MySQL:", err)
+                    reject({"connection":false})
+                    return;
+                }
+                console.log("Connection to MySQL successfull!")
+                if(creds?.database){
+                    connection.query(`CREATE DATABASE IF NOT EXISTS ${creds.database}`, (err, result) => {
+                        if(err) {
+                            console.error("Error Creating Database- ", err);
+                            reject({"connection":false})
+                            return;
+                        }
+                        connection.changeUser({database:creds.database}, (err) => {
+                            if(err){
+                                console.error("Error Switching to Database: ", err);
+                                reject({"connection":false});
+                            }
+                            console.log(`Changed to database- ${creds.database}`)
+                            resolve({"connection":true})
+                        })
+                    })
+                }
+            })
+            this.connection = connection
         })
-        this.connection = connection
     }
     async getOrCreateModel(schema){
         const table = new ModelClass(this.connection)

@@ -7,16 +7,18 @@ class QueryBuilder{
         this.query = `SELECT ${fields} FROM ${this.table}`
         return this
     }
-    where(conditions){
-        const conditionStr = Object.keys(conditions).map(key=>{
-            `${key} = ?`
-        }).join('AND');
-        this.query += ` WHERE ${conditionStr}`
-        this.params = Object.values(conditions)
+    where(conditions = null){
+        if(conditions){
+            const conditionStr = Object.keys(conditions).map(key=>{
+                `${key} = ?`
+            }).join('AND');
+            this.query += ` WHERE ${conditionStr}`
+            this.params = Object.values(conditions)
+        }
         return this;
     }
     insert(data){
-        const keys = Objects.keys(data).join(', ');
+        const keys = Object.keys(data).join(', ');
         const placeholders = Object.keys(data).map(()=>'?').join(', ')
         this.query = `INSERT INTO ${this.table} (${keys}) VALUES (${placeholders})`
         this.params = Object.values(data);

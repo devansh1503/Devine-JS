@@ -2,19 +2,20 @@ class ModelClass{
     constructor(connection){
         this.connection = connection
     }
-    async tableExists(tableName){
-        const [rows] = await this.connection.query(
+    async tableExists(tableName) {
+        const [rows] = await this.connection.promise().query(
             `SELECT COUNT(*) AS table_exists
-            FROM information_schema.tables
-            WHERE table_schema = DATABASE() AND table_name = ${tableName}`
+             FROM information_schema.tables
+             WHERE table_schema = DATABASE() AND table_name = ?`, 
+            [tableName]
         );
-        return rows[0].tableExists > 0;
+        return rows[0].table_exists > 0;
     }
 
     async createTableIfNotExists(schema){
         const {title, fields} = schema;
 
-        const exists = await  this.tableExists(title);
+        const exists = await this.tableExists(title);
         if(exists) {
             return;
         }
@@ -26,17 +27,16 @@ class ModelClass{
             if(fieldConfig.unique) constraints.push('UNIQUE')
             return `\`${fieldName}\` ${sqlType} ${constraints.join(' ')}`.trim();
         })
-
         // Modify logic for primary key
-        const primaryKey = 'id INT AUTO_INCREMENT PRIMARY KEY'
+        const primaryKey = 'id INT AUTO_INCREMENT PRIMARY KEY,'
 
         const createTableSQL = `
-            CREATE TALBE \`${title}\` (
+            CREATE TABLE \`${title}\` (
              ${primaryKey}
              ${fieldDefinitions.join(',\n')}
             )
         `
-        await this.connection.query(createTableSQL)
+        await this.connection.promise().query(createTableSQL)
         console.log(`Table ${title} has been created`)
     }
 
@@ -49,3 +49,5 @@ class ModelClass{
         }
     }
 }
+
+module.exports = ModelClass

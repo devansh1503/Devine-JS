@@ -1,5 +1,3 @@
-var send = require('send')
-
 class Response{
     constructor(res, req){
         this.res = res

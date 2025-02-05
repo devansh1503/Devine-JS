@@ -7,11 +7,11 @@ class TableManager{
     }
     async create(data){
         const builder = new QueryBuilder(this.table).insert(data).build()
-        return this.connection.query(builder.sql, builder.params)
+        return this.connection.promise().query(builder.sql, builder.params)
     }
     async find(conditions){
         const builder = new QueryBuilder(this.table).select().where(conditions).build()
-        return this.connection.query(builder.sql, builder.params)
+        return this.connection.promise().query(builder.sql, builder.params)
     }
 }
 
