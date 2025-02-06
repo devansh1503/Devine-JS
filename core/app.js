@@ -3,10 +3,13 @@ const Response = require('./response')
 const mysql = require('mysql2')
 const ModelClass = require('./orm/ModelClass')
 const TableManager = require('./orm/TableManager')
+const UserService = require('./auth/userService')
+const AuthService = require('./auth/authService')
 
 class Devine{
-    constructor(port){
+    constructor(port, JWT_SECRET=none){
         this.port = port
+        this.JWT_SECRET = JWT_SECRET
         this.requests = new Map()
     }
     listen(){
@@ -24,6 +27,17 @@ class Devine{
     post(route, callBack){
         this.requests.set(`POST-${route}`, callBack)
     }
+    // Need to think a solution here
+    auth(route, req, res){
+        this.requests.set(`POST-${route}`, (req, res)=>{
+            
+        })
+    }
+    register(route, req, res){
+        this.requests.set(`POST-${route}`, (req, res)=>{
+
+        })
+    }
     // put(){
 
     // }
@@ -33,17 +47,38 @@ class Devine{
     // use(){
 
     // }
-    requestListener(req, res){
-        const key = `${req.method}-${req.url}`
-        const responseObj = new Response(res, req)
-        const callback = this.requests.get(key)
-        if (!callback) {
+    async requestListener(req, res){
+        const auth = await authenticate(req)
+        if(auth){
+            const key = `${req.method}-${req.url}`
+            const responseObj = new Response(res, req)
+            const callback = this.requests.get(key)
+            if (!callback) {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Route not found');
+                return;
+            }
+            callback(req, responseObj)
+        }
+        else{
             res.writeHead(404, { 'Content-Type': 'text/plain' });
-            res.end('Route not found');
+            res.end('Authentication Credentials Not Found');
             return;
         }
-        callback(req, responseObj)
     }
+
+    async authenticate(req){
+        if(!this.JWT_SECRET) return true;
+        const token = req.headers('Authorization')?.split(' ')[1];
+        if(token){
+            const validation = new AuthService().verifyToken(token, this.JWT_SECRET)
+            return validation;
+        }
+        else{
+            return false;
+        }
+    }
+
     async connectDb(creds){
         return new Promise((resolve, reject) =>{ 
             const connection = mysql.createConnection({
