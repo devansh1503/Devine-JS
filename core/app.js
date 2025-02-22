@@ -5,9 +5,10 @@ const ModelClass = require('./orm/ModelClass')
 const TableManager = require('./orm/TableManager')
 const UserService = require('./auth/userService')
 const AuthService = require('./auth/authService')
+const Request = require('./request')
 
 class Devine{
-    constructor(port, JWT_SECRET=none){
+    constructor(port, JWT_SECRET=null){
         this.port = port
         this.JWT_SECRET = JWT_SECRET
         this.requests = new Map()
@@ -21,20 +22,29 @@ class Devine{
             console.log(`Server is running at http://localhost:${this.port}/`)
         })
     }
+    parseUrl(url){
+        let parsedUrl = url.split('?')[0]
+        parsedUrl = parsedUrl.replace(/\/:\w+/g, '')
+        return parsedUrl.slice(-1)=='/'?parsedUrl : parsedUrl+'/'
+    }
     get(route, callBack){
-        this.requests.set(`GET-${route}`, callBack)
+        const parsedUrl = this.parseUrl(route)
+        this.requests.set(`GET-${parsedUrl}`, callBack)
     }
     post(route, callBack){
-        this.requests.set(`POST-${route}`, callBack)
+        const parsedUrl = this.parseUrl(route)
+        this.requests.set(`POST-${parsedUrl}`, callBack)
     }
     // Need to think a solution here
     auth(route, req, res){
-        this.requests.set(`POST-${route}`, (req, res)=>{
+        const parsedUrl = this.parseUrl(route)
+        this.requests.set(`POST-${parsedUrl}`, (req, res)=>{
             
         })
     }
     register(route, req, res){
-        this.requests.set(`POST-${route}`, (req, res)=>{
+        const parsedUrl = this.parseUrl(route)
+        this.requests.set(`POST-${parsedUrl}`, (req, res)=>{
 
         })
     }
@@ -48,17 +58,27 @@ class Devine{
 
     // }
     async requestListener(req, res){
-        const auth = await authenticate(req)
+        const auth = await this.authenticate(req)
         if(auth){
-            const key = `${req.method}-${req.url}`
+            const parsedUrl = this.parseUrl(req.url)
+            const key = `${req.method}-${parsedUrl}`
             const responseObj = new Response(res, req)
-            const callback = this.requests.get(key)
+            const requestObj = new Request(req)
+            let callback = this.requests.get(key)
             if (!callback) {
-                res.writeHead(404, { 'Content-Type': 'text/plain' });
-                res.end('Route not found');
-                return;
+                for (let [mapKey, handler] of this.requests){
+                    if(key.startsWith(mapKey)){
+                        callback = handler
+                        break;
+                    }
+                }
+                if(!callback){
+                    res.writeHead(404, { 'Content-Type': 'text/plain' });
+                    res.end('Route not found');
+                    return;
+                }
             }
-            callback(req, responseObj)
+            callback(requestObj, responseObj)
         }
         else{
             res.writeHead(404, { 'Content-Type': 'text/plain' });
