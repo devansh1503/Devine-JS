@@ -12,11 +12,13 @@ class Devine{
         this.port = port
         this.JWT_SECRET = JWT_SECRET
         this.requests = new Map()
+        this.middlewares = []
     }
     listen(){
         // Creating server in listen because we want routes and method to be populated before the server starts
         this.server = http.createServer((req, res)=>{
-            this.requestListener(req, res)
+            // this.requestListener(req, res)
+            this.executeMiddlewares(req, res);
         })
         this.server.listen(this.port, ()=>{
             console.log(`Server is running at http://localhost:${this.port}/`)
@@ -54,12 +56,26 @@ class Devine{
     // patch(){
 
     // }
-    // use(){
-
-    // }
+    use(callBack){
+        this.middlewares.push(callBack)
+    }
+    executeMiddlewares(req, res){
+        let idx = 0;
+        const next = () => {
+            if(idx < this.middlewares.length){
+                const middleware = this.middlewares[idx++];
+                middleware(req, res, next);
+            }
+            else{
+                this.requestListener(req, res)
+            }
+        }
+        next()
+    }
     async requestListener(req, res){
         const auth = await this.authenticate(req)
         if(auth){
+
             const parsedUrl = this.parseUrl(req.url)
             const key = `${req.method}-${parsedUrl}`
             const responseObj = new Response(res, req)
@@ -139,8 +155,8 @@ class Devine{
         await table.createTableIfNotExists(schema)
         return new TableManager(schema.title, this.connection)
     }
-    execute(query){
-    }
+    // execute(query){
+    // }
 }
 
 module.exports = Devine
